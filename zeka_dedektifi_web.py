@@ -1,65 +1,54 @@
 import streamlit as st
-from keybert import KeyBERT
-import textstat
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="🧠 Zeka Dedektifi Web", layout="wide")
-st.title("🧠 Zeka Dedektifi – Web (Lite Sürüm)")
+st.set_page_config(page_title="🧠 Zeka Dedektifi Mini", layout="wide")
+st.title("🧠 Zeka Dedektifi – Mini Web Sürüm")
 
 if "sonuclar" not in st.session_state:
     st.session_state.sonuclar = []
 
-isim = st.text_input("👤 Öğrencinin Adı")
-user_text = st.text_area("✍️ Yazılı Giriş:", height=150)
+isim = st.text_input("👤 Öğrenci Adı")
+cevap = st.text_area("✍️ Öğrencinin Yazılı Cevabı:", height=150)
 
-if st.button("Zeka Türünü Analiz Et ve Kaydet"):
-    if len(user_text.strip()) < 20 or isim.strip() == "":
-        st.warning("Lütfen öğrenci adı ve en az 20 karakterlik bir metin gir.")
-        st.stop()
-
-    st.info("Analiz yapılıyor... ⏳")
-
-    kw_model = KeyBERT()
-    keywords = kw_model.extract_keywords(user_text, top_n=3)
-    kelimeler = [k[0] for k in keywords]
-
-    kelime_sayisi = len(user_text.split())
-    okunabilirlik = textstat.flesch_reading_ease(user_text)
-
-    if "gör" in user_text.lower() or okunabilirlik > 60:
-        tahmin = "Görsel"
-    elif "sayı" in user_text.lower() or kelime_sayisi < 40:
-        tahmin = "Mantıksal"
+if st.button("Zeka Türünü Analiz Et"):
+    if len(cevap.strip()) < 20 or isim.strip() == "":
+        st.warning("Lütfen öğrenci adı ve en az 20 karakterlik metin gir.")
     else:
-        tahmin = "Sözel"
+        metin = cevap.lower()
+        kelimeler = len(metin.split())
 
-    yeni_sonuc = {
-        "İsim": isim,
-        "Zeka Türü": tahmin,
-        "Kelime Sayısı": kelime_sayisi,
-        "Okunabilirlik": round(okunabilirlik, 2),
-        "Anahtar Kelimeler": ", ".join(kelimeler)
-    }
-    st.session_state.sonuclar.append(yeni_sonuc)
+        # Basit kurallar
+        if any(x in metin for x in ["renk", "gör", "şekil", "resim", "hayal"]):
+            zeka = "Görsel"
+        elif any(x in metin for x in ["sayı", "hesap", "mantık", "problem", "analiz"]):
+            zeka = "Mantıksal"
+        elif any(x in metin for x in ["hikaye", "anlat", "kelime", "şiir", "duygu"]):
+            zeka = "Sözel"
+        else:
+            zeka = "Karma"
 
-    st.success(f"🎯 {isim} için tahmin edilen zeka türü: **{tahmin}**")
+        st.session_state.sonuclar.append({
+            "İsim": isim,
+            "Zeka Türü": zeka,
+            "Kelime Sayısı": kelimeler
+        })
 
-st.markdown("---")
-st.header("📊 Öğrenci Sonuç Paneli")
+        st.success(f"🎯 {isim} adlı öğrencinin tahmini zeka türü: **{zeka}**")
+
+st.divider()
+st.header("📊 Sonuç Paneli")
 
 if len(st.session_state.sonuclar) > 0:
-    df_panel = pd.DataFrame(st.session_state.sonuclar)
-    st.dataframe(df_panel, use_container_width=True)
+    df = pd.DataFrame(st.session_state.sonuclar)
+    st.dataframe(df, use_container_width=True)
 
     fig, ax = plt.subplots()
-    df_panel["Zeka Türü"].value_counts().plot(kind='bar', ax=ax, color='skyblue')
+    df["Zeka Türü"].value_counts().plot(kind="bar", ax=ax, color="skyblue")
     plt.title("Zeka Türü Dağılımı")
-    plt.xlabel("Zeka Türü")
-    plt.ylabel("Öğrenci Sayısı")
     st.pyplot(fig)
 
-    csv = df_panel.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Sonuçları CSV olarak indir", csv, "zeka_sonuclari.csv", "text/csv")
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Sonuçları İndir", csv, "zeka_sonuclari.csv", "text/csv")
 else:
-    st.info("Henüz analiz yapılmadı. Öğrenciler eklendikçe tablo ve grafik oluşacak.")
+    st.info("Henüz analiz yapılmadı.")
